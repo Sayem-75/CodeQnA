@@ -37,3 +37,8 @@ coverage/
 .idea/
 *.swp
 
+# Ignore SQL files
+code_qna_database.sql
+
+
+
