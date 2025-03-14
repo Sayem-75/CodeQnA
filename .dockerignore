@@ -1,0 +1,29 @@
+# Ignore dependencies
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Ignore environment variables
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+.env.*local
+
+# Ignore OS-specific files
+.DS_Store
+Thumbs.db
+
+# Ignore build output
+dist/
+build/
+coverage/
+
+# Ignore IDE/editor files
+.vscode/
+.idea/
+*.swp
+
+
