@@ -5,6 +5,7 @@ const express = require('express');
 const bodyParser = require("body-parser");
 const mysql = require('mysql2');
 const bcrypt = require ('bcrypt');
+const session = require('express-session'); 
 
 // Set app environment
 const PORT = 3000;
@@ -12,14 +13,25 @@ const app = express();
 
 // Middleware
 app.use(bodyParser.json());
+app.use(session({
+    secret: 'session_secret',
+    resave: false,
+    saveUninitialized: true,
+    cookie: {
+        maxAge: 3600000, // 1-hour session expiration
+        httpOnly: true // Prevents client-side JS access to session cookies
+    }
+}));
+
+require('dotenv').config(); // Load.env variables
 
 // Create connection pool
 const pool = mysql.createPool({
-    host: 'localhost',
-    port: 3306,
-    user: 'root',
-    password: 'SayemSQL7!',
-    database: 'code_qna_database'
+    host: process.env.DB_HOST,
+    port: process.env.DB_PORT,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME
 });
 
 // Use a promise-based pool connection
@@ -70,7 +82,7 @@ app.post('/login', (req, res) => {
         return res.status(400).json({ success: false, message: "Error: missing data." });
     }
 
-    db.query("SELECT email, password_hash FROM users WHERE email = ?", [email])
+    db.query("SELECT email, password_hash, role FROM users WHERE email = ?", [email])
     .then(([rows]) => {
         if (rows.length === 0) {
             return res.status(400).json({ success: false, message: "Wrong email or password. Please try again or register for an account." });
@@ -84,6 +96,9 @@ app.post('/login', (req, res) => {
                 return res.status(400).json({ success: false, message: "Wrong email or password. Please try again." });
             }
 
+            req.session.userId = user.id; // To track the logged-in user
+            req.session.role = user.role; // To check if the user is an admin
+
             res.json({ success: true, id: user.id, message: "Login successful." });
         });
     })
@@ -93,8 +108,15 @@ app.post('/login', (req, res) => {
     });
 });
 
+function requireAuth(req, res, next) {
+    if (!req.session.userId || !req.session.userId) {
+        return res.status(401).json({ success: false, message: "Unauthorized. Please log in."});
+    }
+    next(); // User is logged in, proceed to next middleware or request handler
+}
+
 // POST request to create channels
-app.post('/createchannel', (req, res) => {
+app.post('/createchannel', requireAuth, (req, res) => {
     const { topic, content } = req.body;
 
     if (!topic || !content) {
@@ -111,7 +133,7 @@ app.post('/createchannel', (req, res) => {
 });
 
 // POST request to post messages to a channel
-app.post('/postmessage', (req, res) => {
+app.post('/postmessage', requireAuth, (req, res) => {
     const { channelId, content} = req.body;
 
     if (!channelId || !content) {
@@ -133,7 +155,7 @@ app.post('/postmessage', (req, res) => {
 });
 
 // POST request to post replies to messages in a channel
-app.post('/postreply', (req, res) => {
+app.post('/postreply', requireAuth, (req, res) => {
     const { messageId, content } = req.body;
 
     if (!messageId || !content) {
@@ -182,6 +204,9 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
     console.log(`Running on http://localhost:${PORT}`);
 });
+
+
+
 
 
 
