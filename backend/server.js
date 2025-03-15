@@ -4,6 +4,7 @@
 const express = require('express');
 const bodyParser = require("body-parser");
 const mysql = require('mysql2');
+const bcrypt = require ('bcrypt');
 
 // Set app environment
 const PORT = 3000;
@@ -35,6 +36,63 @@ db.getConnection()
         process.exit(1);
     });
 
+// POST request to register accounts
+app.post('/register', (req, res) => {
+    const { name, email, password } = req.body;
+
+    if (!name || !email || !password) {
+        return res.status(400).json({ success: false, message: "Error: missing data." });
+    }
+
+    // Hash the password before storing it in the database
+    bcrypt.hash(password, 10) // 10 is the recommended salt rounds
+    .then(hashedPassword => {
+        return db.query(
+            "INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)", 
+            [name, email, hashedPassword]
+        );
+    })
+    .then(([result]) => res.json({ success: true, id: result.insertId}))
+    .catch(err => {
+        if (err.code === 'ER_DUP_ENTRY') {
+            return res.status(400).json({ success: false, message: "Email already registered." });
+        }
+        console.error("Database error: ", err);
+        res.status(500).json({ success: false, message: "Internal server error. Please try again later." });
+    });
+});
+
+// POST request for account login
+app.post('/login', (req, res) => {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+        return res.status(400).json({ success: false, message: "Error: missing data." });
+    }
+
+    db.query("SELECT email, password_hash FROM users WHERE email = ?", [email])
+    .then(([rows]) => {
+        if (rows.length === 0) {
+            return res.status(400).json({ success: false, message: "Wrong email or password. Please try again or register for an account." });
+        }
+
+        const user = rows[0];
+
+        // Compare the entered password with the stored hashed password
+        return bcrypt.compare(password, user.password_hash).then(match => {
+            if (!match) {
+                return res.status(400).json({ success: false, message: "Wrong email or password. Please try again." });
+            }
+
+            res.json({ success: true, id: user.id, message: "Login successful." });
+        });
+    })
+    .catch(err => {
+        console.error("Database error: ", err);
+        res.status(500).json({ success: false, message: "Internal server error. Please try again later." });
+    });
+});
+
 // POST request to create channels
 app.post('/createchannel', (req, res) => {
     const { topic, content } = req.body;
@@ -47,7 +105,7 @@ app.post('/createchannel', (req, res) => {
     .then(([result]) => res.json({ success: true, id: result.insertId}))
     .catch(err => {
         console.error("Database error: ", err);
-        res.status(500).json({ success: false, message: "Internal server error. Please try again later" })
+        res.status(500).json({ success: false, message: "Internal server error. Please try again later." });
     });
 
 });
@@ -70,7 +128,7 @@ app.post('/postmessage', (req, res) => {
     .then(([result]) => res.json({ success: true, id: result.insertId}))
     .catch(err => {
         console.error("Database error: ", err);
-        res.status(500).json({ success: false, message: "Internal server error. Please try again later" })
+        res.status(500).json({ success: false, message: "Internal server error. Please try again later." });
     });
 });
 
@@ -92,7 +150,7 @@ app.post('/postreply', (req, res) => {
     .then(([result]) => res.json({ success: true, id: result.insertId}))
     .catch(err => {
         console.error("Database error: ", err);
-        res.status(500).json({ success: false, message: "Internal server error. Please try again later" })
+        res.status(500).json({ success: false, message: "Internal server error. Please try again later." });
     });
 });
 
@@ -111,7 +169,7 @@ app.get('/alldata', (req, res) => {
         .then(([result]) => res.json({ success: true, data: result }))
         .catch(err => {
             console.error("Database error: ", err);
-            res.status(500).json({ success: false, message: "Internal server error. Please try again later" })
+            res.status(500).json({ success: false, message: "Internal server error. Please try again later." });
         });
 });
 
@@ -124,6 +182,8 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
     console.log(`Running on http://localhost:${PORT}`);
 });
+
+
 
 
 
