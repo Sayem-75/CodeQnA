@@ -16,10 +16,11 @@ app.use(bodyParser.json());
 app.use(session({
     secret: 'session_secret',
     resave: false,
-    saveUninitialized: true,
+    saveUninitialized: false,
     cookie: {
         maxAge: 3600000, // 1-hour session expiration
-        httpOnly: true // Prevents client-side JS access to session cookies
+        httpOnly: false, // Prevents client-side JS access to session cookies
+        secure: false
     }
 }));
 
@@ -82,7 +83,7 @@ app.post('/login', (req, res) => {
         return res.status(400).json({ success: false, message: "Error: missing data." });
     }
 
-    db.query("SELECT email, password_hash, role FROM users WHERE email = ?", [email])
+    db.query("SELECT id, email, password_hash, role FROM users WHERE email = ?", [email])
     .then(([rows]) => {
         if (rows.length === 0) {
             return res.status(400).json({ success: false, message: "Wrong email or password. Please try again or register for an account." });
@@ -109,7 +110,7 @@ app.post('/login', (req, res) => {
 });
 
 function requireAuth(req, res, next) {
-    if (!req.session.userId || !req.session.userId) {
+    if (!req.session|| !req.session.userId) {
         return res.status(401).json({ success: false, message: "Unauthorized. Please log in."});
     }
     next(); // User is logged in, proceed to next middleware or request handler
@@ -204,7 +205,6 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
     console.log(`Running on http://localhost:${PORT}`);
 });
-
 
 
 
