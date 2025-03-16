@@ -1,3 +1,5 @@
+
+/*********************************************************************************** Server Setup ***********************************************************************************/
 'use strict';
 
 // Load packages
@@ -24,6 +26,8 @@ app.use(session({
     }
 }));
 
+/********************************************************************************** Database Setup **********************************************************************************/
+
 require('dotenv').config(); // Load.env variables
 
 // Create connection pool
@@ -48,6 +52,8 @@ db.getConnection()
         console.error('Error connecting to database: ', err);
         process.exit(1);
     });
+
+/********************************************************************* User Register, Login and Authentication *********************************************************************/
 
 // POST request to register accounts
 app.post('/register', (req, res) => {
@@ -109,12 +115,16 @@ app.post('/login', (req, res) => {
     });
 });
 
+
+// Authentication function for users
 function requireAuth(req, res, next) {
     if (!req.session|| !req.session.userId) {
-        return res.status(401).json({ success: false, message: "Unauthorized. Please log in."});
+        return res.status(401).json({ success: false, message: "Unauthorized. Please log in." });
     }
     next(); // User is logged in, proceed to next middleware or request handler
 }
+
+/************************************************************************** POST Requests for App Features **************************************************************************/
 
 // POST request to create channels
 app.post('/createchannel', requireAuth, (req, res) => {
@@ -132,6 +142,7 @@ app.post('/createchannel', requireAuth, (req, res) => {
     });
 
 });
+
 
 // POST request to post messages to a channel
 app.post('/postmessage', requireAuth, (req, res) => {
@@ -155,6 +166,7 @@ app.post('/postmessage', requireAuth, (req, res) => {
     });
 });
 
+
 // POST request to post replies to messages in a channel
 app.post('/postreply', requireAuth, (req, res) => {
     const { messageId, content } = req.body;
@@ -177,6 +189,7 @@ app.post('/postreply', requireAuth, (req, res) => {
     });
 });
 
+
 // GET request to get all data
 app.get('/alldata', (req, res) => {
     const query = `
@@ -196,10 +209,97 @@ app.get('/alldata', (req, res) => {
         });
 });
 
+/************************************************************************************ Admin Role ************************************************************************************/
+
+// Authentication function for admin role
+function requireAdmin(req, res, next) {
+    if (!req.session || req.session.role !== 'admin') {
+        return res.status(403).json({ success: false, message: "Forbidden. Admins only." });
+    }
+    next(); // Admin is logged in, proceed to next middleware or request handler
+}
+
+// DELETE requests for admin role
+app.delete('/deleteuser/:id', requireAdmin, (req, res) => {
+    const userId = req.params.id;
+
+    db.query("SELECT id FROM users WHERE id = ?", [userId])
+    .then(([rows]) => {
+        if (rows.length === 0) {
+            return res.status(404).json({ success: false, message: "User not found." });
+        }
+
+        return db.query("DELETE FROM users WHERE id = ?", [userId]);
+    })
+    .then(() => res.json({ success: true, message: "User deleted successfully." }))
+    .catch(err => {
+        console.error("Database error: ", err);
+        res.status(500).json({ success: false, message: "Internal server error. Please try again later." });
+    });
+});
+
+app.delete('/deletechannel/:id', requireAdmin, (req, res) => {
+    const channelId = req.params.id;
+
+    db.query("SELECT id FROM channels WHERE id = ?", [channelId])
+    .then(([rows]) => {
+        if (rows.length === 0) {
+            return res.status(404).json({ success: false, message: "Channel not found." });
+        }
+
+        return db.query("DELETE FROM channels WHERE id = ?", [channelId]);
+    })
+    .then(() => res.json({ success: true, message: "Channel deleted successfully." }))
+    .catch(err => {
+        console.error("Database error: ", err);
+        res.status(500).json({ success: false, message: "Internal server error. Please try again later." });
+    });
+});
+
+
+app.delete('/deletemessage/:id', requireAdmin, (req, res) => {
+    const messageId = req.params.id;
+
+    db.query("SELECT id FROM messages WHERE id = ?", [messageId])
+    .then(([rows]) => {
+        if (rows.length === 0) {
+            return res.status(404).json({ success: false, message: "Message not found." });
+        }
+
+        return db.query("DELETE FROM messages WHERE id = ?", [messageId]);
+    })
+    .then(() => res.json({ success: true, message: "Message deleted successfully." }))
+    .catch(err => {
+        console.error("Database error: ", err);
+        res.status(500).json({ success: false, message: "Internal server error. Please try again later." });
+    });
+});
+
+app.delete('/deletereply/:id', requireAdmin, (req, res) => {
+    const replyId = req.params.id;
+
+    db.query("SELECT id FROM replies WHERE id = ?", [replyId])
+    .then(([rows]) => {
+        if (rows.length === 0) {
+            return res.status(404).json({ success: false, message: "Reply not found." });
+        }
+
+        return db.query("DELETE FROM replies WHERE id = ?", [replyId]);
+    })
+    .then(() => res.json({ success: true, message: "Reply deleted successfully." }))
+    .catch(err => {
+        console.error("Database error: ", err);
+        res.status(500).json({ success: false, message: "Internal server error. Please try again later." });
+    });
+});
+
+/************************************************************************************* Default *************************************************************************************/
+
 app.use((err, req, res, next) => {
     console.error("Unexpected error:", err);
     res.status(500).json({ success: false, message: "Something went wrong on our end." });
 });
+
 
 // Listen on port
 app.listen(PORT, () => {
