@@ -167,20 +167,30 @@ app.post('/postmessage', requireAuth, (req, res) => {
 });
 
 
-// POST request to post replies to messages in a channel
+// POST request to post replies to messages in a channel (supports both direct replies & nested replies)
 app.post('/postreply', requireAuth, (req, res) => {
-    const { messageId, content } = req.body;
+    const { messageId, parentReplyId, content } = req.body;
 
-    if (!messageId || !content) {
-        return res.status(400).json({ success: false, message: "Error: missing message ID or content." });
+    if ((!messageId && !parentReplyId) || (messageId && parentReplyId) || !content) {
+        return res.status(400).json({ success: false, message: "Error: missing a message ID or a parent reply ID, but not both. Missing content." });
     }
 
-    db.query("SELECT id FROM messages WHERE id = ?", [messageId])
-    .then(([existingMessage]) => {
-        if (existingMessage.length === 0) {
-            return res.status(400).json({ success: false, message: "Invalid message ID." });
+    // If replying to a message, check if the message exists
+    let checkQuery = "SELECT id FROM messages WHERE id = ?";
+    let checkId = messageId;
+
+    // If replying to a reply, check if the parent reply exists
+    if (parentReplyId) {
+        checkQuery = "SELECT id FROM replies WHERE id = ?";
+        checkId = parentReplyId;
+    }
+
+    db.query(checkQuery, [checkId])
+    .then(([rows]) => {
+        if (rows.length === 0) {
+            return res.status(400).json({ success: false, message: "Invalid message or parent reply ID." });
         }
-        return db.query("INSERT INTO replies (messageId, content) VALUES (?, ?)", [messageId, content]);
+        return db.query("INSERT INTO replies (messageId, parentReplyId, content) VALUES (?, ?, ?)", [messageId || null, parentReplyId || null, content]);
     })
     .then(([result]) => res.json({ success: true, id: result.insertId}))
     .catch(err => {
