@@ -8,6 +8,7 @@ const bodyParser = require("body-parser");
 const mysql = require('mysql2');
 const bcrypt = require ('bcrypt');
 const session = require('express-session'); 
+const cors = require('cors');
 
 // Set app environment
 const PORT = 3000;
@@ -15,6 +16,7 @@ const app = express();
 
 // Middleware
 app.use(bodyParser.json());
+app.use(cors());
 app.use(session({
     secret: 'session_secret',
     resave: false,
@@ -315,8 +317,6 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
     console.log(`Running on http://localhost:${PORT}`);
 });
-
-
 
 
 
