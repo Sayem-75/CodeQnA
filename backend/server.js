@@ -16,7 +16,11 @@ const app = express();
 
 // Middleware
 app.use(bodyParser.json());
-app.use(cors());
+app.use(cors({
+    origin: 'http://localhost:3001',
+    credentials: true
+}));
+
 app.use(session({
     secret: 'session_secret',
     resave: false,
@@ -317,6 +321,7 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
     console.log(`Running on http://localhost:${PORT}`);
 });
+
 
 
 
