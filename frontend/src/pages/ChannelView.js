@@ -7,6 +7,7 @@ function ChannelView() {
     const [channel, setChannel] = useState(null);
     const [error, setError] = useState('');
     const[newMessage, setNewMessage] = useState('');
+    const [replyContent, setReplyContent] = useState({});
 
     useEffect(() => {
         fetch('http://localhost:3000/alldata')
@@ -61,20 +62,20 @@ function ChannelView() {
         if (!newMessage.trim()) return;
 
         try {
-            const res = await fetch('http://localhost:3000/postmessage', {
+            const response = await fetch('http://localhost:3000/postmessage', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json'},
                 credentials: 'include',
                 body: JSON.stringify({ channelId: id, content: newMessage }),
             });
 
-            const data = await res.json();
+            const data = await response.json();
             if (data.success) {
                 setNewMessage('');
                 // Re-fetch channel data to update messages
-                const refresh = await fetch('http://localhost:3000/alldata');
-                const freshData = await refresh.json();
-                const channelData = freshData.data.filter(row => row.channelId === Number(id));
+                const res = await fetch('http://localhost:3000/alldata');
+                const updated = await res.json();
+                const channelData = updated.data.filter(row => row.channelId === Number(id));
 
                 const grouped = {};
                 channelData.forEach(row => {
@@ -100,6 +101,50 @@ function ChannelView() {
             }
         } catch (err) {
                 console.error('Error posting message: ', err);
+            }
+    };
+
+    const handlePostReply = async (messageId) => {
+        const content = replyContent[messageId];
+        if (!content) return;
+        try {
+            const response = await fetch('http://localhost:3000/postreply', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json'},
+                credentials: 'include',
+                body: JSON.stringify({ messageId: messageId, content }),
+            });
+            const data = await response.json();
+            if (data.success) {
+                setReplyContent(prev => ({ ...prev, [messageId]: '' }));
+                // Re-fetch channel data to update replies
+                const res = await fetch('http://localhost:3000/alldata');
+                const updated = await res.json();
+                const channelData = updated.data.filter(row => row.channelId === Number(id));
+                const grouped = {};
+                channelData.forEach(row => {
+                    if (!row.messageId) return;
+                    if (!grouped[row.messageId]) {
+                        grouped[row.messageId] = {
+                            id: row.messageId,
+                            content: row.messageContent,
+                            timestamp: row.messageTime,
+                            replies: []
+                        };
+                    }
+                    if (row.replyId) {
+                        grouped[row.messageId].replies.push({
+                            id: row.replyId,
+                            content: row.replyContent,
+                            timestamp: row.replyTime
+                        });
+                    }
+                });
+
+                setMessages(Object.values(grouped));
+            }
+        } catch (err) {
+                console.error('Failed to post reply: ', err);
             }
     };
     
@@ -140,6 +185,17 @@ function ChannelView() {
                             ))}
                         </div>
                     )}
+
+                    <div style={styles.replyContainer}>
+                        <textarea
+                            placeholder="Type your reply here..."
+                            value={replyContent[msg.id] || ''}
+                            onChange={(e) => setReplyContent(prev => ({ ...prev, [msg.id]: e.target.value }))}
+                            rows={3}
+                            style={styles.textarea}
+                        />
+                        <button onClick={() => handlePostReply(msg.id)} style = {styles.button}>Reply</button>
+                    </div>
                 </div>
             ))}
         </div>
@@ -198,8 +254,17 @@ const styles = {
     timestamp: {
         fontSize: '12px',
         color: '#aaa',
-    }
+    },
+    message: {
+        fontSize: '18px',
+        fontWeight: 'bold',
+    },
+    replyContainer: {
+        marginTop: '20px'
+    },
 };
+
+
 
 
 export default ChannelView;
