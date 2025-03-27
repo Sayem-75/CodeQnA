@@ -209,14 +209,25 @@ app.post('/postreply', requireAuth, (req, res) => {
 // GET request to get all data
 app.get('/alldata', (req, res) => {
     const query = `
-    SELECT channels.id AS channelId, channels.topic, channels.content AS channelContent, channels.timestamp AS channelTime,
-        messages.id AS messageId, messages.content AS messageContent, messages.timestamp AS messageTime,
-            replies.id as replyId, replies.content AS replyContent, replies.timestamp AS replyTime
-        FROM channels
-        LEFT JOIN messages ON channels.id = messages.channelId
-        LEFT JOIN replies ON messages.id = replies.messageId
-        ORDER BY channels.timestamp DESC, messages.timestamp DESC, replies.timestamp ASC
-        `;
+    SELECT 
+        channels.id AS channelId, 
+        channels.topic, 
+        channels.content AS channelContent, 
+        channels.timestamp AS channelTime,
+        messages.id AS messageId, 
+        messages.content AS messageContent, 
+        messages.timestamp AS messageTime,
+        replies.id AS replyId, 
+        replies.content AS replyContent, 
+        replies.timestamp AS replyTime,
+        replies.parentReplyId AS parentReplyId,
+        replies.messageId AS replyMessageId
+    FROM channels
+    LEFT JOIN messages ON channels.id = messages.channelId
+    LEFT JOIN replies ON messages.id = replies.messageId OR replies.parentReplyId IS NOT NULL
+    ORDER BY channels.timestamp DESC, messages.timestamp DESC, replies.timestamp ASC
+    `;
+
         db.query(query)
         .then(([result]) => res.json({ success: true, data: result }))
         .catch(err => {
@@ -321,6 +332,10 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
     console.log(`Running on http://localhost:${PORT}`);
 });
+
+
+
+
 
 
 

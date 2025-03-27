@@ -1,5 +1,5 @@
 import { useParams } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 function ChannelView() {
     const { id } = useParams();
@@ -9,12 +9,15 @@ function ChannelView() {
     const[newMessage, setNewMessage] = useState('');
     const [replyContent, setReplyContent] = useState({});
 
-    useEffect(() => {
-        fetch('http://localhost:3000/alldata')
-        .then((res) => res.json())
-        .then((data) => {
+    // Load channel data
+    const fetchChannelData = useCallback(async () => {
+        try {
+            const res = await fetch('http://localhost:3000/alldata');
+            const data  = await res.json();
+
             if (data.success) {
                 const channelData = data.data.filter(row => row.channelId === Number(id));
+                
                 if (channelData.length === 0) {
                     setError("Channel not found.");
                     return;
@@ -27,35 +30,62 @@ function ChannelView() {
                     timestamp: channelData[0].channelTime
                 } : null);
 
-                // Group messages and replies
+                // Group messages, replies and organize nested replies
                 const grouped = {};
+                const replyMap = {};
+
                 channelData.forEach(row => {
-                    if (!row.messageId) return;
-                    if (!grouped[row.messageId]) {
-                        grouped[row.messageId] = {
-                            id: row.messageId,
-                            content: row.messageContent,
-                            timestamp: row.messageTime,
+                    if (row.messageId) {
+                        if (!grouped[row.messageId]) {
+                            grouped[row.messageId] = {
+                                id: row.messageId,
+                                content: row.messageContent,
+                                timestamp: row.messageTime,
+                                replies: []
+                            };
+                        }
+                    }
+
+                    if (row.replyId) {
+                        replyMap[row.replyId] = {
+                            id: row.replyId,
+                            content: row.replyContent,
+                            timestamp: row.replyTime,
+                            parentReplyId: row.parentReplyId || null,
+                            messageId: row.replyMessageId,
                             replies: []
                         };
                     }
-                    if (row.replyId) {
-                        grouped[row.messageId].replies.push({
-                            id: row.replyId,
-                            content: row.replyContent,
-                            timestamp: row.replyTime
-                        });
+                });
+
+                // Nest replies properly
+                Object.values(replyMap).forEach(reply => {
+                    if (reply.parentReplyId) {
+                        //Nested reply -> attach under its parent reply
+                        const parent = replyMap[reply.parentReplyId];
+                        if (parent) parent.replies.push(reply);
+                    } else {
+                        // Direct reply to a message
+                        const message = grouped[reply.messageId];
+
+                        // const message = grouped[Object.keys(grouped).find(id => reply.id && grouped[id].replies.some(r => r.id === reply.id))] ||
+                        //                 grouped[channelData.find(row => row.replyId === reply.id)?.messageId];
+
+                        if (message) message.replies.push(reply);
                     }
                 });
 
                 setMessages(Object.values(grouped));
             }
-        })
-        .catch((err) => {
+        } catch(err) {
             console.error(err);
             setError('Could not load channel.');
-        });
+        }
     }, [id]);
+
+    useEffect(() => {
+        fetchChannelData();
+    }, [fetchChannelData]);
 
     const handlePostMessage = async (e) => {
         e.preventDefault();
@@ -73,75 +103,39 @@ function ChannelView() {
             if (data.success) {
                 setNewMessage('');
                 // Re-fetch channel data to update messages
-                const res = await fetch('http://localhost:3000/alldata');
-                const updated = await res.json();
-                const channelData = updated.data.filter(row => row.channelId === Number(id));
-
-                const grouped = {};
-                channelData.forEach(row => {
-                    if (!row.messageId) return;
-                    if (!grouped[row.messageId]) {
-                        grouped[row.messageId] = {
-                            id: row.messageId,
-                            content: row.messageContent,
-                            timestamp: row.messageTime,
-                            replies: []
-                        };
-                    }
-                    if (row.replyId) {
-                        grouped[row.messageId].replies.push({
-                            id: row.replyId,
-                            content: row.replyContent,
-                            timestamp: row.replyTime
-                        });
-                    }
-                });
-
-                setMessages(Object.values(grouped));
+                fetchChannelData();
             }
         } catch (err) {
                 console.error('Error posting message: ', err);
             }
     };
 
-    const handlePostReply = async (messageId) => {
-        const content = replyContent[messageId];
-        if (!content) return;
+    const handlePostReply = async (messageId, parentReplyId = null) => {
+        const key = parentReplyId ? `${messageId}-${parentReplyId}` : `${messageId}`;
+        const content = replyContent[key] || '';
+        if (!content.trim()) return;
+
         try {
             const response = await fetch('http://localhost:3000/postreply', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json'},
                 credentials: 'include',
-                body: JSON.stringify({ messageId: messageId, content }),
+                body: JSON.stringify({ 
+                    messageId: parentReplyId ? null : messageId,
+                    parentReplyId: parentReplyId, 
+                    content 
+                }),
             });
+
             const data = await response.json();
             if (data.success) {
-                setReplyContent(prev => ({ ...prev, [messageId]: '' }));
+                setReplyContent(prev => ({ 
+                    ...prev, 
+                    [key] : '' 
+                }));
+                
                 // Re-fetch channel data to update replies
-                const res = await fetch('http://localhost:3000/alldata');
-                const updated = await res.json();
-                const channelData = updated.data.filter(row => row.channelId === Number(id));
-                const grouped = {};
-                channelData.forEach(row => {
-                    if (!row.messageId) return;
-                    if (!grouped[row.messageId]) {
-                        grouped[row.messageId] = {
-                            id: row.messageId,
-                            content: row.messageContent,
-                            timestamp: row.messageTime,
-                            replies: []
-                        };
-                    }
-                    if (row.replyId) {
-                        grouped[row.messageId].replies.push({
-                            id: row.replyId,
-                            content: row.replyContent,
-                            timestamp: row.replyTime
-                        });
-                    }
-                });
-
-                setMessages(Object.values(grouped));
+                fetchChannelData();
             }
         } catch (err) {
                 console.error('Failed to post reply: ', err);
@@ -149,7 +143,32 @@ function ChannelView() {
     };
     
     if (error) return <p>{error}</p>;
-    if (!channel) return <p>Loading Channel...</p>;
+    if (!channel && !error) return <p>Loading channel details...</p>;
+
+    const renderReplies = (replies, parentMessage) => {
+        return replies.map(reply => (
+            <div key={reply.id} style={styles.reply}>
+                <p>{reply.content}</p>
+                <p style={styles.timestamp}>{new Date(reply.timestamp).toLocaleString()}</p>
+
+                {/* Nested Reply Input */}
+                <textarea
+                    placeholder="Reply to this reply..."
+                    value={replyContent[`${parentMessage.id}-${reply.id}`] || ''}
+                    onChange={(e) => setReplyContent (prev => ({...prev, [`${parentMessage.id}-${reply.id}`]: e.target.value}))}
+                    rows={2}
+                    style={styles.textarea}
+                />
+                <button onClick={() => handlePostReply(parentMessage.id, reply.id)} style={styles.button}>Reply</button>
+
+                {reply.replies.length > 0 && (
+                    <div style={styles.replies}>
+                        {renderReplies(reply.replies, reply)}
+                    </div>
+                )}
+            </div>
+        ));
+    };
 
     return (
         <div style={styles.container}>
@@ -177,12 +196,7 @@ function ChannelView() {
                     {msg.replies.length > 0 && (
                         <div style={styles.replies}>
                             <strong>Replies:</strong>
-                            {msg.replies.map(reply => (
-                                <div key={reply.id} style={styles.reply}>
-                                    <p>{reply.content}</p>
-                                    <p style={styles.timestamp}>{new Date(reply.timestamp).toLocaleString()}</p>
-                                </div>
-                            ))}
+                            {renderReplies(msg.replies, msg)}
                         </div>
                     )}
 
@@ -250,6 +264,9 @@ const styles = {
     },
     reply: {
         marginBottom: '10px',
+        marginLeft: '20px',
+        paddingLeft: '10px',
+        borderLeft: '1px dashed #32CD32',
     },
     timestamp: {
         fontSize: '12px',
@@ -263,6 +280,9 @@ const styles = {
         marginTop: '20px'
     },
 };
+
+
+
 
 
 
