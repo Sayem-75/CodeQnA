@@ -7,6 +7,7 @@ function ChannelView() {
     const [channel, setChannel] = useState(null);
     const [error, setError] = useState('');
     const[newMessage, setNewMessage] = useState('');
+    const [screenshotURL, setScreenshotURL] = useState('');
     const [replyContent, setReplyContent] = useState({});
 
     // Load channel data
@@ -41,6 +42,7 @@ function ChannelView() {
                                 id: row.messageId,
                                 content: row.messageContent,
                                 timestamp: row.messageTime,
+                                screenshot: row.messageScreenshot,
                                 replies: []
                             };
                         }
@@ -53,6 +55,7 @@ function ChannelView() {
                             timestamp: row.replyTime,
                             parentReplyId: row.parentReplyId || null,
                             messageId: row.replyMessageId,
+                            screenshot: row.replyScreenshot,
                             replies: []
                         };
                     }
@@ -96,12 +99,13 @@ function ChannelView() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json'},
                 credentials: 'include',
-                body: JSON.stringify({ channelId: id, content: newMessage }),
+                body: JSON.stringify({ channelId: id, content: newMessage, screenshot: screenshotURL }),
             });
 
             const data = await response.json();
             if (data.success) {
                 setNewMessage('');
+                setScreenshotURL('');
                 // Re-fetch channel data to update messages
                 fetchChannelData();
             }
@@ -123,7 +127,8 @@ function ChannelView() {
                 body: JSON.stringify({ 
                     messageId: parentReplyId ? null : messageId,
                     parentReplyId: parentReplyId, 
-                    content 
+                    content,
+                    screenshot: screenshotURL 
                 }),
             });
 
@@ -133,6 +138,7 @@ function ChannelView() {
                     ...prev, 
                     [key] : '' 
                 }));
+                setScreenshotURL('');
                 
                 // Re-fetch channel data to update replies
                 fetchChannelData();
@@ -149,6 +155,11 @@ function ChannelView() {
         return replies.map(reply => (
             <div key={reply.id} style={styles.reply}>
                 <p>{reply.content}</p>
+
+                {reply.screenshot && (
+                    <img src={reply.screenshot} alt="screenshot" style={styles.screenshot} />
+                )}
+
                 <p style={styles.timestamp}>{new Date(reply.timestamp).toLocaleString()}</p>
 
                 {/* Nested Reply Input */}
@@ -184,6 +195,16 @@ function ChannelView() {
                     style={styles.textarea}
                     rows={3}
                 />
+                <input
+                    type="text"
+                    placeholder="Screenshot URL (optional)"
+                    value={screenshotURL}
+                    onChange={(e) => setScreenshotURL(e.target.value)}
+                    style={styles.input}
+                />
+                <p style={{fontSize: '14px', color: '888' }}>
+                    Upload your screenshot to an image hosting website like imgur.com, and use a direct image URL (ends in .png, .jpg, etc) from it.
+                </p>
                 <button type="submit" style={styles.button}>Post Message</button>
             </form> 
 
@@ -191,6 +212,11 @@ function ChannelView() {
             {messages.map(msg => (
                 <div key={msg.id} style={styles.card}>
                     <p style={styles.message}>{msg.content}</p>
+
+                    {msg.screenshot && (
+                        <img src={msg.screenshot} alt="screenshot" style={styles.screenshot} />
+                    )}
+
                     <p style={styles.timestamp}>Posted: {new Date(msg.timestamp).toLocaleString()}</p>
 
                     {msg.replies.length > 0 && (
@@ -207,7 +233,17 @@ function ChannelView() {
                             onChange={(e) => setReplyContent(prev => ({ ...prev, [msg.id]: e.target.value }))}
                             rows={3}
                             style={styles.textarea}
+                        /> <br/>
+                        <input
+                            type="text"
+                            placeholder="Screenshot URL (optional)"
+                            value={screenshotURL}
+                            onChange={(e) => setScreenshotURL(e.target.value)}
+                            style={styles.input}
                         />
+                        <p style={{fontSize: '14px', color: '888' }}>
+                            Upload your screenshot to an image hosting website like imgur.com, and use a direct image URL (ends in .png, .jpg, etc) from it.
+                        </p>
                         <button onClick={() => handlePostReply(msg.id)} style = {styles.button}>Reply</button>
                     </div>
                 </div>
@@ -234,6 +270,14 @@ const styles = {
         marginBottom:'30px',
     },
     textarea: {
+        backgroundColor: '#111',
+        color: '#fff',
+        padding: '10px',
+        fontSize: '16px',
+        borderRadius: '4px',
+        border: '1px solid #555',
+    },
+    input: {
         backgroundColor: '#111',
         color: '#fff',
         padding: '10px',
@@ -278,6 +322,12 @@ const styles = {
     },
     replyContainer: {
         marginTop: '20px'
+    },
+    screenshot: {
+        maxWidth: '75%',
+        marginTop: '10px',
+        border: '1px solid #32CD32',
+        borderRadius: '4px',
     },
 };
 

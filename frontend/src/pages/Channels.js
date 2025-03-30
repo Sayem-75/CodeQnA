@@ -5,6 +5,7 @@ function Channels() {
     const [channels, setChannels] = useState([]);
     const [topic, setTopic] = useState('');
     const [content, setContent] = useState('');
+    const [screenshotURL, setScreenshotURL] = useState('');
     const [error, setError] = useState('');
 
     // Fetch all channels from backend
@@ -24,6 +25,7 @@ function Channels() {
                             channelId: row.channelId,
                             topic: row.topic,
                             channelContent: row.channelContent,
+                            channelScreenshot: row.channelScreenshot,
                             channelTime: row.channelTime
                         });
                     }
@@ -49,7 +51,7 @@ function Channels() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json'},
                 credentials: 'include',
-                body: JSON.stringify({ topic, content }),
+                body: JSON.stringify({ topic, content, screenshot: screenshotURL }),
             });
 
             const data = await response.json();
@@ -61,6 +63,7 @@ function Channels() {
 
                 setTopic('');
                 setContent('');
+                setScreenshotURL('');
             } else {
                 setError(data.message || 'Channel creation failed');
             }
@@ -91,6 +94,16 @@ function Channels() {
                     rows="3"
                     style={styles.textarea}
                 />
+                <input
+                    type="text"
+                    placeholder="Screenshot URL (optional)"
+                    value={screenshotURL}
+                    onChange={(e) => setScreenshotURL(e.target.value)}
+                    style={styles.input}
+                />
+                <p style={{fontSize: '14px', color: '888' }}>
+                    Upload your screenshot to an image hosting website like imgur.com, and use a direct image URL (ends in .png, .jpg, etc) from it.
+                </p>
                 <button type="submit" style={styles.button}>Create Channel</button>
                 {error && <p style={styles.error}>{error}</p>}
             </form>
@@ -103,6 +116,9 @@ function Channels() {
                         <Link to={`/channel/${channel.channelId}`} style={styles.channelLink}>
                             <div key={index} style={styles.channelCard}>
                                 <h3 style={styles.channelTitle}>{channel.topic}</h3>
+                                {channel.channelScreenshot && (
+                                    <img src={channel.channelScreenshot} alt="screenshot" style={styles.screenshot} />
+                                )}
                                 <p style={styles.channelContent}>{channel.channelContent}</p>
                                 <p style={styles.timestamp}>Created: {new Date(channel.channelTime).toLocaleString()}</p>
                             </div>
@@ -187,8 +203,15 @@ const styles = {
     },
     channelLink: {
         textDecoration: 'none',
-    }
+    },
+    screenshot: {
+        maxWidth: '75%',
+        marginTop: '10px',
+        border: '1px solid #32CD32',
+        borderRadius: '4px',
+    },
 };
+
 
 
 

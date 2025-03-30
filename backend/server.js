@@ -134,13 +134,13 @@ function requireAuth(req, res, next) {
 
 // POST request to create channels
 app.post('/createchannel', requireAuth, (req, res) => {
-    const { topic, content } = req.body;
+    const { topic, content, screenshot } = req.body;
 
     if (!topic || !content) {
         return res.status(400).json({ success: false, message: "Error: missing topic or content." });
     }
 
-    db.query("INSERT INTO channels (topic, content) VALUES (?, ?)", [topic, content])
+    db.query("INSERT INTO channels (topic, content, screenshot) VALUES (?, ?,  ?)", [topic, content, screenshot || null])
     .then(([result]) => res.json({ success: true, id: result.insertId}))
     .catch(err => {
         console.error("Database error: ", err);
@@ -152,7 +152,7 @@ app.post('/createchannel', requireAuth, (req, res) => {
 
 // POST request to post messages to a channel
 app.post('/postmessage', requireAuth, (req, res) => {
-    const { channelId, content} = req.body;
+    const { channelId, content, screenshot } = req.body;
 
     if (!channelId || !content) {
         return res.status(400).json({ success: false, message: "Error: missing channel ID or content." });
@@ -163,7 +163,7 @@ app.post('/postmessage', requireAuth, (req, res) => {
         if (existingChannel.length === 0) {
             return res.status(400).json({ success: false, message: "Invalid channel ID." });
         }
-        return db.query("INSERT INTO messages (channelId, content) VALUES (?, ?)", [channelId, content]);
+        return db.query("INSERT INTO messages (channelId, content, screenshot) VALUES (?, ?, ?)", [channelId, content, screenshot || null]);
     })
     .then(([result]) => res.json({ success: true, id: result.insertId}))
     .catch(err => {
@@ -175,7 +175,7 @@ app.post('/postmessage', requireAuth, (req, res) => {
 
 // POST request to post replies to messages in a channel (supports both direct replies & nested replies)
 app.post('/postreply', requireAuth, (req, res) => {
-    const { messageId, parentReplyId, content } = req.body;
+    const { messageId, parentReplyId, content, screenshot } = req.body;
 
     if ((!messageId && !parentReplyId) || (messageId && parentReplyId) || !content) {
         return res.status(400).json({ success: false, message: "Error: missing a message ID or a parent reply ID, but not both. Missing content." });
@@ -196,7 +196,7 @@ app.post('/postreply', requireAuth, (req, res) => {
         if (rows.length === 0) {
             return res.status(400).json({ success: false, message: "Invalid message or parent reply ID." });
         }
-        return db.query("INSERT INTO replies (messageId, parentReplyId, content) VALUES (?, ?, ?)", [messageId || null, parentReplyId || null, content]);
+        return db.query("INSERT INTO replies (messageId, parentReplyId, content, screenshot) VALUES (?, ?, ?, ?)", [messageId || null, parentReplyId || null, content, screenshot || null]);
     })
     .then(([result]) => res.json({ success: true, id: result.insertId}))
     .catch(err => {
@@ -214,14 +214,17 @@ app.get('/alldata', (req, res) => {
         channels.topic, 
         channels.content AS channelContent, 
         channels.timestamp AS channelTime,
+        channels.screenshot AS channelScreenshot,
         messages.id AS messageId, 
         messages.content AS messageContent, 
         messages.timestamp AS messageTime,
+        messages.screenshot AS messageScreenshot,
         replies.id AS replyId, 
         replies.content AS replyContent, 
         replies.timestamp AS replyTime,
         replies.parentReplyId AS parentReplyId,
-        replies.messageId AS replyMessageId
+        replies.messageId AS replyMessageId,
+        replies.screenshot AS replyScreenshot
     FROM channels
     LEFT JOIN messages ON channels.id = messages.channelId
     LEFT JOIN replies ON messages.id = replies.messageId OR replies.parentReplyId IS NOT NULL
@@ -332,9 +335,6 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
     console.log(`Running on http://localhost:${PORT}`);
 });
-
-
-
 
 
 
