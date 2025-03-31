@@ -140,7 +140,7 @@ app.post('/createchannel', requireAuth, (req, res) => {
         return res.status(400).json({ success: false, message: "Error: missing topic or content." });
     }
 
-    db.query("INSERT INTO channels (topic, content, screenshot) VALUES (?, ?,  ?)", [topic, content, screenshot || null])
+    db.query("INSERT INTO channels (topic, content, screenshot, userId) VALUES (?, ?, ?, ?)", [topic, content, screenshot || null, req.session.userId])
     .then(([result]) => res.json({ success: true, id: result.insertId}))
     .catch(err => {
         console.error("Database error: ", err);
@@ -163,7 +163,7 @@ app.post('/postmessage', requireAuth, (req, res) => {
         if (existingChannel.length === 0) {
             return res.status(400).json({ success: false, message: "Invalid channel ID." });
         }
-        return db.query("INSERT INTO messages (channelId, content, screenshot) VALUES (?, ?, ?)", [channelId, content, screenshot || null]);
+        return db.query("INSERT INTO messages (channelId, content, screenshot, userId) VALUES (?, ?, ?, ?)", [channelId, content, screenshot || null, req.session.userId]);
     })
     .then(([result]) => res.json({ success: true, id: result.insertId}))
     .catch(err => {
@@ -196,7 +196,7 @@ app.post('/postreply', requireAuth, (req, res) => {
         if (rows.length === 0) {
             return res.status(400).json({ success: false, message: "Invalid message or parent reply ID." });
         }
-        return db.query("INSERT INTO replies (messageId, parentReplyId, content, screenshot) VALUES (?, ?, ?, ?)", [messageId || null, parentReplyId || null, content, screenshot || null]);
+        return db.query("INSERT INTO replies (messageId, parentReplyId, content, screenshot, userId) VALUES (?, ?, ?, ?, ?)", [messageId || null, parentReplyId || null, content, screenshot || null, req.session.userId]);
     })
     .then(([result]) => res.json({ success: true, id: result.insertId}))
     .catch(err => {
@@ -210,25 +210,39 @@ app.post('/postreply', requireAuth, (req, res) => {
 app.get('/alldata', (req, res) => {
     const query = `
     SELECT 
-        channels.id AS channelId, 
-        channels.topic, 
-        channels.content AS channelContent, 
-        channels.timestamp AS channelTime,
-        channels.screenshot AS channelScreenshot,
-        messages.id AS messageId, 
-        messages.content AS messageContent, 
-        messages.timestamp AS messageTime,
-        messages.screenshot AS messageScreenshot,
-        replies.id AS replyId, 
-        replies.content AS replyContent, 
-        replies.timestamp AS replyTime,
-        replies.parentReplyId AS parentReplyId,
-        replies.messageId AS replyMessageId,
-        replies.screenshot AS replyScreenshot
+    channels.id AS channelId, 
+    channels.topic, 
+    channels.content AS channelContent, 
+    channels.timestamp AS channelTime,
+    channels.screenshot AS channelScreenshot,
+    cu.name AS channelAuthor,
+
+    messages.id AS messageId, 
+    messages.content AS messageContent, 
+    messages.timestamp AS messageTime,
+    messages.screenshot AS messageScreenshot,
+    messages.userId AS messageUserId,
+    mu.name AS messageAuthor,
+
+    replies.id AS replyId, 
+    replies.content AS replyContent, 
+    replies.timestamp AS replyTime,
+    replies.parentReplyId AS parentReplyId,
+    replies.messageId AS replyMessageId,
+    replies.screenshot AS replyScreenshot,
+    replies.userId AS replyUserId,
+    ru.name AS replyAuthor
+
     FROM channels
+    LEFT JOIN users AS cu ON channels.userId = cu.id
+
     LEFT JOIN messages ON channels.id = messages.channelId
+    LEFT JOIN users AS mu ON messages.userId = mu.id
+
     LEFT JOIN replies ON messages.id = replies.messageId OR replies.parentReplyId IS NOT NULL
-    ORDER BY channels.timestamp DESC, messages.timestamp DESC, replies.timestamp ASC
+    LEFT JOIN users AS ru ON replies.userId = ru.id
+
+    ORDER BY channels.timestamp DESC, messages.timestamp DESC, replies.timestamp ASC;
     `;
 
         db.query(query)
@@ -335,10 +349,6 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
     console.log(`Running on http://localhost:${PORT}`);
 });
-
-
-
-
 
 
 

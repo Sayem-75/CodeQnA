@@ -26,7 +26,8 @@ function Channels() {
                             topic: row.topic,
                             channelContent: row.channelContent,
                             channelScreenshot: row.channelScreenshot,
-                            channelTime: row.channelTime
+                            channelTime: row.channelTime,
+                            channelAuthor: row.channelAuthor || "Anonymous"
                         });
                     }
                 });
@@ -115,6 +116,7 @@ function Channels() {
                     channels.map((channel, index) => (
                         <Link to={`/channel/${channel.channelId}`} style={styles.channelLink}>
                             <div key={index} style={styles.channelCard}>
+                                <p style={styles.author}><strong>{channel.channelAuthor}</strong></p>
                                 <h3 style={styles.channelTitle}>{channel.topic}</h3>
                                 {channel.channelScreenshot && (
                                     <img src={channel.channelScreenshot} alt="screenshot" style={styles.screenshot} />
@@ -196,6 +198,7 @@ const styles = {
     channelContent: {
         fontSize: '16px',
         marginBottom: '8px',
+        color: "#fff",
     },
     timestamp: {
         fontSize: '12px',
@@ -209,6 +212,12 @@ const styles = {
         marginTop: '10px',
         border: '1px solid #32CD32',
         borderRadius: '4px',
+    },
+    author: {
+        fontSize: '14px',
+        fontWeight: 'bold',
+        color: '#00FA9A',
+        marginBottom: '5px',
     },
 };
 

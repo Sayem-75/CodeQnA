@@ -28,7 +28,8 @@ function ChannelView() {
                     id: channelData[0].channelId,
                     topic: channelData[0].topic,
                     content: channelData[0].channelContent,
-                    timestamp: channelData[0].channelTime
+                    timestamp: channelData[0].channelTime,
+                    author: channelData[0].channelAuthor
                 } : null);
 
                 // Group messages, replies and organize nested replies
@@ -43,6 +44,7 @@ function ChannelView() {
                                 content: row.messageContent,
                                 timestamp: row.messageTime,
                                 screenshot: row.messageScreenshot,
+                                author: row.messageAuthor || "Anonymous",
                                 replies: []
                             };
                         }
@@ -56,6 +58,7 @@ function ChannelView() {
                             parentReplyId: row.parentReplyId || null,
                             messageId: row.replyMessageId,
                             screenshot: row.replyScreenshot,
+                            author: row.replyAuthor || "Anonymous",
                             replies: []
                         };
                     }
@@ -154,6 +157,7 @@ function ChannelView() {
     const renderReplies = (replies, parentMessage) => {
         return replies.map(reply => (
             <div key={reply.id} style={styles.reply}>
+                <p style={styles.author}><strong>{reply.author}</strong></p>
                 <p>{reply.content}</p>
 
                 {reply.screenshot && (
@@ -183,6 +187,7 @@ function ChannelView() {
 
     return (
         <div style={styles.container}>
+            <p style={styles.author}><strong>{channel.author}</strong></p>
             <h2 style={styles.heading}>{channel.topic}</h2>
             <p>{channel.content}</p>
             <p style={styles.timestamp}>Created: {new Date(channel.timestamp).toLocaleDateString()}</p>
@@ -211,6 +216,7 @@ function ChannelView() {
             <h3>Messages</h3>
             {messages.map(msg => (
                 <div key={msg.id} style={styles.card}>
+                    <p style={styles.author}><strong>{msg.author}</strong></p>
                     <p style={styles.message}>{msg.content}</p>
 
                     {msg.screenshot && (
@@ -329,10 +335,13 @@ const styles = {
         border: '1px solid #32CD32',
         borderRadius: '4px',
     },
+    author: {
+        fontSize: '16px',
+        fontWeight: 'bold',
+        color: '#00FA9A',
+        marginBottom: '5px',
+    },
 };
-
-
-
 
 
 
