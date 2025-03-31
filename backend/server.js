@@ -17,7 +17,7 @@ const app = express();
 // Middleware
 app.use(bodyParser.json());
 app.use(cors({
-    origin: 'http://localhost:3001',
+    origin: 'http://localhost:3002',
     credentials: true
 }));
 

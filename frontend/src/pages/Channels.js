@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../AuthContext';
 
 function Channels() {
     const [channels, setChannels] = useState([]);
@@ -7,12 +8,13 @@ function Channels() {
     const [content, setContent] = useState('');
     const [screenshotURL, setScreenshotURL] = useState('');
     const [error, setError] = useState('');
+    const { user } = useAuth();
 
-    // Fetch all channels from backend
-    useEffect(() => {
-        fetch('http://localhost:3000/alldata')
-        .then((res) => res.json())
-        .then((data) => {
+    const fetchChannels = async () => {
+        try {
+            const res = await fetch('http://localhost:3000/alldata');
+            const data = await res.json();
+
             if (data.success) {
                 // setChannels(data.data);
                 const uniqueChannels = [];
@@ -33,13 +35,18 @@ function Channels() {
                 });
 
                 setChannels(uniqueChannels);
-
+            } else {
+                setError('Could not fetch channels. ');
             }
-        })
-        .catch((err) => {
+        } catch (err) {
             console.error(err);
-            setError('Could not load channels.');
-        });
+            setError('Something went wrong.');
+        }
+    };
+
+    // Fetch all channels from backend
+    useEffect(() => {
+        fetchChannels();
     }, []);
 
     // Handle new channel creation
@@ -58,9 +65,7 @@ function Channels() {
             const data = await response.json();
             if (data.success) {
                 // Re-fetch all data to show new channel
-                const updated = await fetch('http://localhost:3000/alldata');
-                const updatedData = await updated.json();
-                setChannels(updatedData.data);
+                fetchChannels();
 
                 setTopic('');
                 setContent('');
@@ -74,9 +79,29 @@ function Channels() {
         }
     };
 
+    const handleDeleteChannel = async (channelId) => {
+        if (!window.confirm("Are you sure you want to delete this channel?")) return;
+        try {
+            const res = await fetch(`http://localhost:3000/deletechannel/${channelId}`, {
+                method: 'DELETE',
+                credentials: 'include',
+            });
+            const data = await res.json();
+            if (data.success) {
+                fetchChannels();
+            } else {
+                alert(data.message);
+            }
+        } catch (err) {
+            console.error('Failed to delete channel: ', err);
+        }
+    };
+
+    if (error) return <p>{error}</p>;
+
     return (
         <div style={styles.container}>
-            <h2 style={styles.heading}>All Channels</h2>
+            <h2 style={styles.heading}>Browse Channels</h2>
 
             <form onSubmit={handleSubmit} style={styles.form}>
                 <input
@@ -102,7 +127,7 @@ function Channels() {
                     onChange={(e) => setScreenshotURL(e.target.value)}
                     style={styles.input}
                 />
-                <p style={{fontSize: '14px', color: '888' }}>
+                <p style={{fontSize: '14px', color: '#ff0000' }}>
                     Upload your screenshot to an image hosting website like imgur.com, and use a direct image URL (ends in .png, .jpg, etc) from it.
                 </p>
                 <button type="submit" style={styles.button}>Create Channel</button>
@@ -114,17 +139,24 @@ function Channels() {
                     <p>No channels found.</p>
                 ) : (
                     channels.map((channel, index) => (
-                        <Link to={`/channel/${channel.channelId}`} style={styles.channelLink}>
-                            <div key={index} style={styles.channelCard}>
-                                <p style={styles.author}><strong>{channel.channelAuthor}</strong></p>
+                        <div key={channel.channelId} style={styles.channelCard}>
+                            <p style={styles.author}><strong>{channel.channelAuthor}</strong></p>
+
+                            <Link to={`/channel/${channel.channelId}`} style={styles.channelLink}>
                                 <h3 style={styles.channelTitle}>{channel.topic}</h3>
-                                {channel.channelScreenshot && (
-                                    <img src={channel.channelScreenshot} alt="screenshot" style={styles.screenshot} />
-                                )}
-                                <p style={styles.channelContent}>{channel.channelContent}</p>
-                                <p style={styles.timestamp}>Created: {new Date(channel.channelTime).toLocaleString()}</p>
-                            </div>
-                        </Link>
+                            </Link>
+
+                            {channel.channelScreenshot && (
+                                <img src={channel.channelScreenshot} alt="screenshot" style={styles.screenshot} />
+                            )}
+
+                            <p style={styles.channelContent}>{channel.channelContent}</p>
+                            <p style={styles.timestamp}>Created: {new Date(channel.channelTime).toLocaleString()}</p>
+
+                            {user?.role === 'admin' && (
+                                <button onClick={() => handleDeleteChannel(channel.channelId)} style={styles.adminBtn}>Delete Channel</button>
+                            )}
+                        </div>
                     ))
                 )}
             </div>
@@ -219,8 +251,16 @@ const styles = {
         color: '#00FA9A',
         marginBottom: '5px',
     },
+    adminBtn: {
+        backgroundColor: 'red',
+        color: '#fff',
+        border: 'none',
+        padding: '6px 10px',
+        marginTop: '10px',
+        borderRadius: '4px',
+        cursor: 'pointer',
+    },
 };
-
 
 
 

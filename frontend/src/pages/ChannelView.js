@@ -1,5 +1,6 @@
 import { useParams } from 'react-router-dom';
 import { useState, useEffect, useCallback } from 'react';
+import { useAuth } from '../AuthContext';
 
 function ChannelView() {
     const { id } = useParams();
@@ -9,6 +10,7 @@ function ChannelView() {
     const[newMessage, setNewMessage] = useState('');
     const [screenshotURL, setScreenshotURL] = useState('');
     const [replyContent, setReplyContent] = useState({});
+    const { user } = useAuth();
 
     // Load channel data
     const fetchChannelData = useCallback(async () => {
@@ -150,6 +152,42 @@ function ChannelView() {
                 console.error('Failed to post reply: ', err);
             }
     };
+
+    const handleDeleteMessage = async (messageId) => {
+        if (!window.confirm("Are you sure you want to delete this message?")) return;
+        try {
+            const res = await fetch(`http://localhost:3000/deletemessage/${messageId}`, {
+                method: 'DELETE',
+                credentials: 'include',
+            });
+            const data = await res.json();
+            if (data.success) {
+                fetchChannelData();
+            } else {
+                alert(data.message);
+            }
+        } catch (err) {
+            console.error('Failed to delete message: ', err);
+        }
+    };
+
+    const handleDeleteReply = async (replyId) => {
+        if (!window.confirm("Are you sure you want to delete this reply?")) return;
+        try {
+            const res = await fetch(`http://localhost:3000/deletereply/${replyId}`, {
+                method: 'DELETE',
+                credentials: 'include',
+            });
+            const data = await res.json();
+            if (data.success) {
+                fetchChannelData();
+            } else {
+                alert(data.message);
+            }
+        } catch (err) {
+            console.error('Failed to delete reply: ', err);
+        }
+    };
     
     if (error) return <p>{error}</p>;
     if (!channel && !error) return <p>Loading channel details...</p>;
@@ -165,6 +203,10 @@ function ChannelView() {
                 )}
 
                 <p style={styles.timestamp}>{new Date(reply.timestamp).toLocaleString()}</p>
+
+                {user?.role === 'admin' && (
+                    <button onClick={() => handleDeleteReply(reply.id)} style={styles.adminBtn}>Delete Reply</button>
+                )}
 
                 {/* Nested Reply Input */}
                 <textarea
@@ -207,7 +249,7 @@ function ChannelView() {
                     onChange={(e) => setScreenshotURL(e.target.value)}
                     style={styles.input}
                 />
-                <p style={{fontSize: '14px', color: '888' }}>
+                <p style={{fontSize: '14px', color: '#ff0000' }}>
                     Upload your screenshot to an image hosting website like imgur.com, and use a direct image URL (ends in .png, .jpg, etc) from it.
                 </p>
                 <button type="submit" style={styles.button}>Post Message</button>
@@ -224,6 +266,10 @@ function ChannelView() {
                     )}
 
                     <p style={styles.timestamp}>Posted: {new Date(msg.timestamp).toLocaleString()}</p>
+
+                    {user?.role === 'admin' && (
+                    <button onClick={() => handleDeleteMessage(msg.id)} style={styles.adminBtn}>Delete Message</button>
+                    )}
 
                     {msg.replies.length > 0 && (
                         <div style={styles.replies}>
@@ -247,7 +293,7 @@ function ChannelView() {
                             onChange={(e) => setScreenshotURL(e.target.value)}
                             style={styles.input}
                         />
-                        <p style={{fontSize: '14px', color: '888' }}>
+                        <p style={{fontSize: '14px', color: '#ff0000' }}>
                             Upload your screenshot to an image hosting website like imgur.com, and use a direct image URL (ends in .png, .jpg, etc) from it.
                         </p>
                         <button onClick={() => handlePostReply(msg.id)} style = {styles.button}>Reply</button>
@@ -340,6 +386,15 @@ const styles = {
         fontWeight: 'bold',
         color: '#00FA9A',
         marginBottom: '5px',
+    },
+    adminBtn: {
+        backgroundColor: 'red',
+        color: '#fff',
+        border: 'none',
+        padding: '6px 10px',
+        marginTop: '10px',
+        borderRadius: '4px',
+        cursor: 'pointer',
     },
 };
 
