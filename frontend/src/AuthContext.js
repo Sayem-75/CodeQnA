@@ -11,11 +11,11 @@ export function AuthProvider({ children }) {
         })
             .then(res => res.json())
             .then(data => {
-                if (data.success) {
+                if (data.loggedIn) {
                     setUser({ id: data.id, role: data.role });
                 }
             })
-            .catch(err => console.error('Error fetching user info:', err));
+            .catch(err => console.error('Session check failed', err));
     }, []);
 
     return (

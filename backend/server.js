@@ -122,6 +122,15 @@ app.post('/login', (req, res) => {
 });
 
 
+// POST request for log in session
+app.get('/me', (req, res) => {
+    if (req.session && req.session.userId) {
+        return res.json({ loggedIn: true, id: req.session.userId, role: req.session.role});
+    }
+    res.json({ loggedIn: false });
+});
+
+
 // Authentication function for users
 function requireAuth(req, res, next) {
     if (!req.session|| !req.session.userId) {
@@ -349,6 +358,7 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
     console.log(`Running on http://localhost:${PORT}`);
 });
+
 
 
 
