@@ -1,11 +1,14 @@
 import { Link, useNavigate} from 'react-router-dom';
+import { useAuth } from '../AuthContext';
+import { use } from 'react';
 
 function Header() {
     const navigate = useNavigate();
-    const userId = localStorage.getItem('userId');
+    // const userId = localStorage.getItem('userId');
+    const { user, setUser } = useAuth();
 
     const handleLogout = () => {
-        localStorage.removeItem('userId');
+        setUser(null);
         navigate('/login');
     };
 
@@ -16,10 +19,10 @@ function Header() {
             <nav>
                 <ul style={styles.navList}>
                     <li><Link to ="/" style={styles.link}>Home</Link></li>
-                    {!userId && <li><Link to="/login" style={styles.link}>Login</Link></li>}
-                    {!userId && <li><Link to="/register" style={styles.link}>Register</Link></li>}
-                    {userId && <li><Link to="/channels" style={styles.link}>Channels</Link></li>}
-                    {userId && <li><button onClick={handleLogout} style={styles.logoutBtn}>Logout</button></li>}
+                    {!user && <li><Link to="/login" style={styles.link}>Login</Link></li>}
+                    {!user && <li><Link to="/register" style={styles.link}>Register</Link></li>}
+                    {user && <li><Link to="/channels" style={styles.link}>Channels</Link></li>}
+                    {user && <li><button onClick={handleLogout} style={styles.logoutBtn}>Logout</button></li>}
                 </ul>
             </nav>
         </header> 

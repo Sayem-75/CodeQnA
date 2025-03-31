@@ -1,11 +1,13 @@
-import {useState} from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../AuthContext';
 
 function Login() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const navigate =  useNavigate();
+    const { setUser } = useAuth();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -23,11 +25,12 @@ function Login() {
 
             if (data.success) {
                 // Store user info locally (basic)
-                localStorage.setItem('userId', data.id);
+                // localStorage.setItem('userId', data.id);
 
                 // Optional: store role if returned
                 // localStorage.setItem('role', data.role);
                 
+                setUser({ id: data.id, role: data.role });
                 navigate('/channels');
             } else {
                 setError(data.message || 'Login failed');
@@ -118,3 +121,4 @@ const styles = {
 
 
 export default Login;
+

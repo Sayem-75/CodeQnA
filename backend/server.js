@@ -112,7 +112,7 @@ app.post('/login', (req, res) => {
             req.session.userId = user.id; // To track the logged-in user
             req.session.role = user.role; // To check if the user is an admin
 
-            res.json({ success: true, id: user.id, message: "Login successful." });
+            res.json({ success: true, id: user.id, role:user.role, message: "Login successful." });
         });
     })
     .catch(err => {

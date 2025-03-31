@@ -7,23 +7,28 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Channels from './pages/Channels';
 import ChannelView from './pages/ChannelView';
+import { AuthProvider } from './AuthContext';
 
 
 function App() {
   return (
-    <Router>
-      <Header />
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/channels" element={<Channels />} />
-        <Route path="/channel/:id" element={<ChannelView />} />
-      </Routes>
-    </Router>
+    <AuthProvider>
+      <Router>
+        <Header />
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/channels" element={<Channels />} />
+          <Route path="/channel/:id" element={<ChannelView />} />
+        </Routes>
+      </Router>
+    </AuthProvider>
   )
 }
 
 export default App;
+
+
 
 
