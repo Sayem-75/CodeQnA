@@ -10,6 +10,7 @@ function ChannelView() {
     const[newMessage, setNewMessage] = useState('');
     const [screenshotURL, setScreenshotURL] = useState('');
     const [replyContent, setReplyContent] = useState({});
+    const [ratingData, setRatingData] = useState({});
     const { user } = useAuth();
 
     // Load channel data
@@ -34,9 +35,10 @@ function ChannelView() {
                     author: channelData[0].channelAuthor
                 } : null);
 
-                // Group messages, replies and organize nested replies
+                // Group messages, replies and organize nested replies, and ratings
                 const grouped = {};
                 const replyMap = {};
+                const ratingsMap = {};
 
                 channelData.forEach(row => {
                     if (row.messageId) {
@@ -64,6 +66,30 @@ function ChannelView() {
                             replies: []
                         };
                     }
+
+                    if (row.ratingTarget === 'channel' && row.ratingChannelId) {
+                        if (!ratingsMap[`channel-${row.ratingChannelId}`]) {
+                            ratingsMap[`channel-${row.ratingChannelId}`] = { up: 0, down: 0};
+                        }
+                        if (row.isUpVote) ratingsMap[`channel-${row.ratingChannelId}`].up++;
+                        else ratingsMap[`channel-${row.ratingChannelId}`].down++;
+                    }
+
+                    if (row.ratingTarget === 'message' && row.ratingMessageId) {
+                        if (!ratingsMap[`message-${row.ratingMessageId}`]) {
+                            ratingsMap[`message-${row.ratingMessageId}`] = { up: 0, down: 0};
+                        }
+                        if (row.isUpVote) ratingsMap[`message-${row.ratingMessageId}`].up++;
+                        else ratingsMap[`message-${row.ratingMessageId}`].down++;
+                    }
+
+                    if (row.ratingTarget === 'reply' && row.ratingReplyId) {
+                        if (!ratingsMap[`reply-${row.ratingReplyId}`]) {
+                            ratingsMap[`reply-${row.ratingReplyId}`] = { up: 0, down: 0};
+                        }
+                        if (row.isUpVote) ratingsMap[`reply-${row.ratingReplyId}`].up++;
+                        else ratingsMap[`reply-${row.ratingReplyId}`].down++;
+                    }
                 });
 
                 // Nest replies properly
@@ -84,6 +110,7 @@ function ChannelView() {
                 });
 
                 setMessages(Object.values(grouped));
+                setRatingData(ratingsMap);
             }
         } catch(err) {
             console.error(err);
@@ -102,7 +129,7 @@ function ChannelView() {
         try {
             const response = await fetch('http://localhost:3000/postmessage', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json'},
+                headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
                 body: JSON.stringify({ channelId: id, content: newMessage, screenshot: screenshotURL }),
             });
@@ -127,7 +154,7 @@ function ChannelView() {
         try {
             const response = await fetch('http://localhost:3000/postreply', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json'},
+                headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
                 body: JSON.stringify({ 
                     messageId: parentReplyId ? null : messageId,
@@ -151,6 +178,30 @@ function ChannelView() {
         } catch (err) {
                 console.error('Failed to post reply: ', err);
             }
+    };
+
+    const handleRate = async (target, id, isUpVote) => {
+        try {
+            const response = await fetch('http://localhost:3000/rate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({
+                    targetType: target,
+                    targetId: id,
+                    isUpVote
+                })
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                fetchChannelData();
+            } else {
+                alert(data.message || "Failed to rate.");
+            }
+        } catch (err) {
+            console.error("Error rating item:", err);
+        }
     };
 
     const handleDeleteMessage = async (messageId) => {
@@ -204,6 +255,9 @@ function ChannelView() {
 
                 <p style={styles.timestamp}>{new Date(reply.timestamp).toLocaleString()}</p>
 
+                {renderRatings('reply', reply.id)}
+
+
                 {user?.role === 'admin' && (
                     <button onClick={() => handleDeleteReply(reply.id)} style={styles.adminBtn}>Delete Reply</button>
                 )}
@@ -227,12 +281,25 @@ function ChannelView() {
         ));
     };
 
+    const renderRatings = (target, id) => {
+        const key = `${target}-${id}`;
+        const rating = ratingData[key] || { up: 0, down: 0};
+
+        return (
+            <div>
+                <button onClick={() => handleRate(target, id, true)} style={styles.ratingBtn}>👍 {rating.up}</button>
+                <button onClick={() => handleRate(target, id, false)} style={styles.ratingBtn}>👎 {rating.down}</button>
+            </div>
+        );
+    };
+
     return (
         <div style={styles.container}>
             <p style={styles.author}><strong>{channel.author}</strong></p>
             <h2 style={styles.heading}>{channel.topic}</h2>
             <p>{channel.content}</p>
             <p style={styles.timestamp}>Created: {new Date(channel.timestamp).toLocaleDateString()}</p>
+            {renderRatings('channel', channel.id)}
 
             <form onSubmit={handlePostMessage} style={styles.form}>
                 <textarea
@@ -266,6 +333,9 @@ function ChannelView() {
                     )}
 
                     <p style={styles.timestamp}>Posted: {new Date(msg.timestamp).toLocaleString()}</p>
+
+                    {renderRatings('message', msg.id)}
+
 
                     {user?.role === 'admin' && (
                     <button onClick={() => handleDeleteMessage(msg.id)} style={styles.adminBtn}>Delete Message</button>
@@ -396,8 +466,23 @@ const styles = {
         borderRadius: '4px',
         cursor: 'pointer',
     },
+    ratingBtn: {
+        backgroundColor:'#111',
+        color: '#fff',
+        border: '1px solid #32CD32',
+        padding: '6px 12px',
+        borderRadius: '4px',
+        cursor: 'pointer',
+        fontSize: '16px',
+        fontWeight: 'bold',
+        marginRight: '10px',
+        transition: 'background-color 0.2s, transform 0.2s',
+    },
+    ratingBtnHover: {
+        backgroundColor: '#222',
+        transform: 'scale(1.05)',
+    },
 };
-
 
 
 

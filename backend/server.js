@@ -213,6 +213,59 @@ app.post('/postreply', requireAuth, (req, res) => {
     });
 });
 
+// POST request for ratings
+app.post('/rate', requireAuth, async (req, res) => {
+    const { targetType, targetId, isUpVote } = req.body;
+
+    // Validate input
+    if (!['channel', 'message', 'reply'].includes(targetType) || typeof targetId !== 'number' || typeof isUpVote !== 'boolean') {
+        return res.status(400).json({ success: false, message: "Invalid rating request." });
+    }
+
+    try {
+        const tableMap = {
+            channel: 'channels',
+            message: 'messages',
+            reply: 'replies'
+        };
+
+        const table = tableMap[targetType]
+
+        // Determine column name
+        const column = targetType === 'channel' ? 'channelId' : targetType === 'message' ? 'messageId' : 'replyId';
+
+        // Check if target exists
+        const [target] = await db.query(`SELECT id FROM ${table} WHERE id = ?`, [targetId]);
+        if (target.length === 0) {
+            return res.status(404).json({ success: false, message: "Target not found." });
+        }
+
+        // Check if the user already rated this
+        const [existing] = await db.query(
+            `SELECT * FROM ratings WHERE userId = ? AND ${column} = ?`,
+            [req.session.userId, targetId]
+        );
+
+        if (existing.length > 0) {
+            // Update the rating
+            await db.query(
+                `UPDATE ratings SET isUpVote = ?, timestamp = CURRENT_TIMESTAMP WHERE userId = ? AND ${column} = ?`,
+                [isUpVote ? 1 : 0, req.session.userId, targetId]
+            );
+        } else {
+            // Insert new rating
+            await db.query(
+                `INSERT INTO ratings (userId, ${column}, isUpVote) VALUES (?, ?, ?)`,
+                [req.session.userId, targetId, isUpVote ? 1 : 0]
+            );
+        }
+
+        res.json({ success: true, message: "Rating saved." });
+    } catch (err) {
+        console.error("Rating error:", err);
+        res.status(500).json({ success: false, message: "Internal server error. Please try again later." });
+    }
+});
 
 // GET request to get all data
 app.get('/alldata', (req, res) => {
@@ -239,7 +292,19 @@ app.get('/alldata', (req, res) => {
     replies.messageId AS replyMessageId,
     replies.screenshot AS replyScreenshot,
     replies.userId AS replyUserId,
-    ru.name AS replyAuthor
+    ru.name AS replyAuthor,
+
+    ratings.channelId AS ratingChannelId,
+    ratings.messageId AS ratingMessageId,
+    ratings.replyId AS ratingReplyId,
+    ratings.isUpVote AS isUpVote,
+    ratings.userId AS ratingUserId,
+    CASE
+        WHEN ratings.channelId IS NOT NULL THEN 'channel'
+        WHEN ratings.messageId IS NOT NULL THEN 'message'
+        WHEN ratings.replyId IS NOT NULL THEN 'reply'
+        ELSE NULL
+    END AS ratingTarget
 
     FROM channels
     LEFT JOIN users AS cu ON channels.userId = cu.id
@@ -249,6 +314,8 @@ app.get('/alldata', (req, res) => {
 
     LEFT JOIN replies ON messages.id = replies.messageId OR replies.parentReplyId IS NOT NULL
     LEFT JOIN users AS ru ON replies.userId = ru.id
+
+    LEFT JOIN ratings ON ratings.channelId = channels.id OR ratings.messageId = messages.id OR ratings.replyId = replies.id
 
     ORDER BY channels.timestamp DESC, messages.timestamp DESC, replies.timestamp ASC;
     `;
@@ -367,8 +434,6 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
     console.log(`Running on http://localhost:${PORT}`);
 });
-
-
 
 
 
