@@ -11,7 +11,7 @@ function ChannelView() {
     const [screenshotURL, setScreenshotURL] = useState('');
     const [replyContent, setReplyContent] = useState({});
     const [ratingData, setRatingData] = useState({});
-    const { user } = useAuth();
+    const { user, userLevels } = useAuth();
 
     // Load channel data
     const fetchChannelData = useCallback(async () => {
@@ -246,7 +246,13 @@ function ChannelView() {
     const renderReplies = (replies, parentMessage) => {
         return replies.map(reply => (
             <div key={reply.id} style={styles.reply}>
-                <p style={styles.author}><strong>{reply.author}</strong></p>
+                <p style={styles.author}><strong>{reply.author}</strong>{' '}
+                {userLevels[reply.author] && (
+                    <span style={{ ...styles.level, ...getLevelColor(userLevels[reply.author]) }}>
+                        {userLevels[reply.author]}
+                    </span>
+                )}
+                </p>
                 <p>{reply.content}</p>
 
                 {reply.screenshot && (
@@ -295,7 +301,13 @@ function ChannelView() {
 
     return (
         <div style={styles.container}>
-            <p style={styles.author}><strong>{channel.author}</strong></p>
+            <p style={styles.author}><strong>{channel.author}</strong>{' '}
+            {userLevels[channel.author] && (
+                    <span style={{ ...styles.level, ...getLevelColor(userLevels[channel.author]) }}>
+                        {userLevels[channel.author]}
+                    </span>
+            )}
+            </p>
             <h2 style={styles.heading}>{channel.topic}</h2>
             <p>{channel.content}</p>
             <p style={styles.timestamp}>Created: {new Date(channel.timestamp).toLocaleDateString()}</p>
@@ -325,7 +337,15 @@ function ChannelView() {
             <h3>Messages</h3>
             {messages.map(msg => (
                 <div key={msg.id} style={styles.card}>
-                    <p style={styles.author}><strong>{msg.author}</strong></p>
+
+                   <p style={styles.author}><strong>{msg.author}</strong>{' '}
+                    {userLevels[msg.author] && (
+                        <span style={{ ...styles.level, ...getLevelColor(userLevels[msg.author]) }}>
+                            {userLevels[msg.author]}
+                        </span>
+                    )}
+                    </p>
+
                     <p style={styles.message}>{msg.content}</p>
 
                     {msg.screenshot && (
@@ -372,6 +392,18 @@ function ChannelView() {
             ))}
         </div>
     );
+}
+
+function getLevelColor(level) {
+    switch (level) {
+        case 'Expert':
+            return { backgroundColor: '#FFD700', color: '#000' };
+        case 'Intermediate':
+            return { backgroundColor: '#1E90FF', color: '#fff' };
+        case 'Beginner':
+            default:
+                return { backgroundColor: '#808080', color: '#fff' }
+    }
 }
 
 const styles = {
@@ -482,6 +514,14 @@ const styles = {
         backgroundColor: '#222',
         transform: 'scale(1.05)',
     },
+    level: {
+        marginLeft: '8px',
+        padding: '2px 6px',
+        borderRadius: '4px',
+        fontSize: '12px',
+        fontWeight: 'bold',
+        backgroundColor: '#444'
+    }
 };
 
 

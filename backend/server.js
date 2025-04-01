@@ -323,6 +323,55 @@ app.get('/search', async (req, res) => {
     }
 });
 
+// GET request to get user levels for special feature
+app.get('/userlevels', async (req, res) => {
+    try {
+        const query = `
+        SELECT
+            u.id AS userId,
+            u.name,
+            COALESCE(SUM(upvotes), 0) AS totalUpvotes,
+            CASE
+                WHEN COALESCE(SUM(upvotes), 0) >= 1000 THEN 'Expert'
+                WHEN COALESCE(SUM(upvotes), 0) >= 100 THEN 'Intermediate'
+                ELSE 'Beginner'
+            END AS level
+            FROM users u
+            LEFT JOIN (
+                SELECT channels.userId, COUNT(*) AS upvotes
+                FROM ratings
+                JOIN channels ON ratings.channelId = channels.id
+                WHERE ratings.isUpVote = 1
+                GROUP BY channels.userId
+                
+                UNION ALL
+                
+                SELECT messages.userId, COUNT(*) AS upvotes
+                FROM ratings
+                JOIN messages ON ratings.messageId = messages.id
+                WHERE ratings.isUpVote = 1
+                GROUP BY messages.userId
+                
+                UNION ALL
+                
+                SELECT replies.userId, COUNT(*) AS upvotes
+                FROM ratings
+                JOIN replies ON ratings.replyId = replies.id
+                WHERE ratings.isUpVote = 1
+                GROUP BY replies.userId
+            ) AS all_upvotes ON u.id = all_upvotes.userId
+            GROUP BY u.id
+            ORDER BY totalUpvotes DESC;
+        `;
+
+        const [rows] = await db.query(query);
+        res.json({ success: true, data: rows });
+    } catch (err) {
+        console.error("User Level Error:", err);
+        res.status(500).json({ success: false, message: "Internal server error. Please try again later." });
+    }
+});
+
 // GET request to get all data
 app.get('/alldata', (req, res) => {
     const query = `
@@ -490,6 +539,7 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
     console.log(`Running on http://localhost:${PORT}`);
 });
+
 
 
 
