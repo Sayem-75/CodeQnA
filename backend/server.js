@@ -138,7 +138,7 @@ function requireAuth(req, res, next) {
     next(); // User is logged in, proceed to next middleware or request handler
 }
 
-/************************************************************************** POST Requests for App Features **************************************************************************/
+/*********************************************************************************** App Features ***********************************************************************************/
 
 // POST request to create channels
 app.post('/createchannel', requireAuth, (req, res) => {
@@ -263,6 +263,62 @@ app.post('/rate', requireAuth, async (req, res) => {
         res.json({ success: true, message: "Rating saved." });
     } catch (err) {
         console.error("Rating error:", err);
+        res.status(500).json({ success: false, message: "Internal server error. Please try again later." });
+    }
+});
+
+// GET request to find content in channels, messages, and replies that match a string
+app.get('/search', async (req, res) => {
+    const q = req.query.q;
+
+    if (!q || q.trim() === '') {
+        return res.status(400).json({ success: false, message: "Missing query." });
+    }
+
+    try {
+        const keyword = `%${q.trim()}%`; // For LIKE operator
+        const [channels] = await db.query( `
+            SELECT id AS channelId, topic, content, userId, timestamp
+            FROM channels
+            WHERE topic LIKE ? OR content LIKE?
+            `, [keyword, keyword]);
+
+        const [messages] = await db.query( `
+            SELECT id AS messageId, channelId, content, userId, timestamp
+            FROM messages
+            WHERE content LIKE?
+            `, [keyword]);
+
+        const [replies] = await db.query( `
+            SELECT 
+                r.id AS replyId,
+                r.messageId,
+                COALESCE(r.messageId, pr.messageId) AS messageSourceId,
+                COALESCE(m.channelId, pm.channelId) AS channelId,
+                r.content,
+                r.userId,
+                r.timestamp
+            FROM replies r
+            LEFT JOIN messages m ON r.messageId = m.id
+            LEFT JOIN replies pr ON r.parentReplyId = pr.id
+            LEFT JOIN messages pm ON pr.messageId = pm.id
+            WHERE r.content LIKE ?
+            `, [keyword]);
+
+        const [users] = await db.query("SELECT id, name FROM users");
+        const userMap = {};
+        users.forEach(u => userMap[u.id] = u.name);
+
+        res.json({ 
+            success: true, 
+            results: {
+                channels: channels.map(c => ({ ...c, author: userMap[c.userId] || "Anonymous" })),
+                messages: messages.map(m => ({ ...m, author: userMap[m.userId] || "Anonymous" })),
+                replies: replies.map(r => ({ ...r, author: userMap[r.userId] || "Anonymous" })),
+            }
+        });
+    } catch (err) {
+        console.error("Search error:", err);
         res.status(500).json({ success: false, message: "Internal server error. Please try again later." });
     }
 });
@@ -434,6 +490,10 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
     console.log(`Running on http://localhost:${PORT}`);
 });
+
+
+
+
 
 
 

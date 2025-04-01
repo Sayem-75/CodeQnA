@@ -17,6 +17,7 @@ function Header() {
     
             <nav>
                 <ul style={styles.navList}>
+                    {user && <li><Link to="/search" style={styles.link}>Search</Link></li>}
                     <li><Link to ="/" style={styles.link}>Home</Link></li>
                     {!user && <li><Link to="/login" style={styles.link}>Login</Link></li>}
                     {!user && <li><Link to="/register" style={styles.link}>Register</Link></li>}

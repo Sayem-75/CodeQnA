@@ -8,6 +8,7 @@ import Register from './pages/Register';
 import Channels from './pages/Channels';
 import Users from './pages/Users';
 import ChannelView from './pages/ChannelView';
+import Search from './pages/Search';
 import { AuthProvider } from './AuthContext';
 
 function App() {
@@ -17,6 +18,7 @@ function App() {
         <Header />
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/search" element={<Search />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/channels" element={<Channels />} />
