@@ -1,7 +1,8 @@
 import { Link } from 'react-router-dom';
+import { useAuth } from '../AuthContext';
 
 function Home() {
-    const userId = localStorage.getItem('userId');
+    const { user } = useAuth();
 
     return (
         <div style={styles.container}>
@@ -10,7 +11,7 @@ function Home() {
                 A place to ask, answer, and grow your coding skills.
             </p>
 
-            {!userId ? (
+            {!user ? (
                 <div style={styles.buttonGroup}>
                     <Link to="/login" style={styles.button}>Login</Link>
                     <Link to="/register" style={styles.button}>Register</Link>

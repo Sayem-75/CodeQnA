@@ -122,14 +122,13 @@ app.post('/login', (req, res) => {
 });
 
 
-// POST request for log in session
+// GET request for log in session
 app.get('/me', (req, res) => {
     if (req.session && req.session.userId) {
         return res.json({ loggedIn: true, id: req.session.userId, role: req.session.role});
     }
     res.json({ loggedIn: false });
 });
-
 
 // Authentication function for users
 function requireAuth(req, res, next) {
@@ -272,6 +271,16 @@ function requireAdmin(req, res, next) {
     next(); // Admin is logged in, proceed to next middleware or request handler
 }
 
+// GET request for users details for admin role to remove users
+app.get('/users', requireAdmin, (req, res) => {
+    db.query("SELECT id, name, email, role FROM users")
+        .then(([rows]) => res.json({ success: true, data: rows}))
+        .catch(err => {
+            console.error("Database error: ", err);
+            res.status(500).json({ success: false, message: "Internal server error." });
+        });
+});
+
 // DELETE requests for admin role
 app.delete('/deleteuser/:id', requireAdmin, (req, res) => {
     const userId = req.params.id;
@@ -358,6 +367,7 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
     console.log(`Running on http://localhost:${PORT}`);
 });
+
 
 
 

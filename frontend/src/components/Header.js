@@ -1,6 +1,5 @@
 import { Link, useNavigate} from 'react-router-dom';
 import { useAuth } from '../AuthContext';
-import { use } from 'react';
 
 function Header() {
     const navigate = useNavigate();
@@ -22,6 +21,7 @@ function Header() {
                     {!user && <li><Link to="/login" style={styles.link}>Login</Link></li>}
                     {!user && <li><Link to="/register" style={styles.link}>Register</Link></li>}
                     {user && <li><Link to="/channels" style={styles.link}>Channels</Link></li>}
+                    {user?.role === 'admin' && <li><Link to="/users" style={styles.link}>Users</Link></li>}
                     {user && <li><button onClick={handleLogout} style={styles.logoutBtn}>Logout</button></li>}
                 </ul>
             </nav>
@@ -76,3 +76,4 @@ const styles = {
 
 
 export default Header;
+
