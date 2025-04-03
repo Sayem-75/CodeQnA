@@ -17,7 +17,7 @@ const app = express();
 // Middleware
 app.use(bodyParser.json());
 app.use(cors({
-    origin: 'http://localhost:3002',
+    origin: 'http://localhost:3001',
     credentials: true
 }));
 
@@ -332,8 +332,8 @@ app.get('/userlevels', async (req, res) => {
             u.name,
             COALESCE(SUM(upvotes), 0) AS totalUpvotes,
             CASE
-                WHEN COALESCE(SUM(upvotes), 0) >= 1000 THEN 'Expert'
-                WHEN COALESCE(SUM(upvotes), 0) >= 100 THEN 'Intermediate'
+                WHEN COALESCE(SUM(upvotes), 0) >= 5 THEN 'Expert'
+                WHEN COALESCE(SUM(upvotes), 0) >= 3 THEN 'Intermediate'
                 ELSE 'Beginner'
             END AS level
             FROM users u
