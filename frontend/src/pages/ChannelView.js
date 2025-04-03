@@ -11,6 +11,7 @@ function ChannelView() {
     const [screenshotURL, setScreenshotURL] = useState('');
     const [replyContent, setReplyContent] = useState({});
     const [ratingData, setRatingData] = useState({});
+    const [visibleReplies, setVisibleReplies] = useState({});
     const { user, userLevels } = useAuth();
 
     // Load channel data
@@ -39,6 +40,10 @@ function ChannelView() {
                 const grouped = {};
                 const replyMap = {};
                 const ratingsMap = {};
+                const seenChannelRatings = new Set();
+                const seenMessageRatings = new Set();
+                const seenReplyRatings = new Set();
+
 
                 channelData.forEach(row => {
                     if (row.messageId) {
@@ -67,25 +72,29 @@ function ChannelView() {
                         };
                     }
 
-                    if (row.ratingTarget === 'channel' && row.ratingChannelId) {
+                    if (row.ratingTarget === 'channel' && row.ratingChannelId && !seenChannelRatings.has(row.ratingChannelId)) {
+                        seenChannelRatings.add(row.ratingChannelId);
                         if (!ratingsMap[`channel-${row.ratingChannelId}`]) {
-                            ratingsMap[`channel-${row.ratingChannelId}`] = { up: 0, down: 0};
+                            ratingsMap[`channel-${row.ratingChannelId}`] = { up: 0, down: 0 };
                         }
                         if (row.isUpVote) ratingsMap[`channel-${row.ratingChannelId}`].up++;
                         else ratingsMap[`channel-${row.ratingChannelId}`].down++;
                     }
+                    
 
-                    if (row.ratingTarget === 'message' && row.ratingMessageId) {
+                    if (row.ratingTarget === 'message' && row.ratingMessageId && !seenMessageRatings.has(row.ratingMessageId)) {
+                        seenMessageRatings.add(row.ratingMessageId);
                         if (!ratingsMap[`message-${row.ratingMessageId}`]) {
-                            ratingsMap[`message-${row.ratingMessageId}`] = { up: 0, down: 0};
+                            ratingsMap[`message-${row.ratingMessageId}`] = { up: 0, down: 0 };
                         }
                         if (row.isUpVote) ratingsMap[`message-${row.ratingMessageId}`].up++;
                         else ratingsMap[`message-${row.ratingMessageId}`].down++;
                     }
 
-                    if (row.ratingTarget === 'reply' && row.ratingReplyId) {
+                    if (row.ratingTarget === 'reply' && row.ratingReplyId && !seenReplyRatings.has(row.ratingReplyId)) {
+                        seenReplyRatings.add(row.ratingReplyId);
                         if (!ratingsMap[`reply-${row.ratingReplyId}`]) {
-                            ratingsMap[`reply-${row.ratingReplyId}`] = { up: 0, down: 0};
+                            ratingsMap[`reply-${row.ratingReplyId}`] = { up: 0, down: 0 };
                         }
                         if (row.isUpVote) ratingsMap[`reply-${row.ratingReplyId}`].up++;
                         else ratingsMap[`reply-${row.ratingReplyId}`].down++;
@@ -110,7 +119,7 @@ function ChannelView() {
                 });
 
                 setMessages(Object.values(grouped));
-                setRatingData(ratingsMap);
+                setRatingData(prev => ({ ...prev, ...ratingsMap }));
             }
         } catch(err) {
             console.error(err);
@@ -299,6 +308,13 @@ function ChannelView() {
         );
     };
 
+    const toggleReplies = (messageId) => {
+        setVisibleReplies(prev => ({
+            ...prev,
+            [messageId]: !prev[messageId]
+        }));
+    };    
+
     return (
         <div style={styles.container}>
             <p style={styles.author}><strong>{channel.author}</strong>{' '}
@@ -362,6 +378,12 @@ function ChannelView() {
                     )}
 
                     {msg.replies.length > 0 && (
+                        <button onClick={() => toggleReplies(msg.id)} style={styles.toggleBtn}>
+                            {visibleReplies[msg.id] ? "Hide Replies" : "Show Replies"}
+                        </button>
+                    )}
+
+                    {msg.replies.length > 0 && visibleReplies[msg.id] && (
                         <div style={styles.replies}>
                             <strong>Replies:</strong>
                             {renderReplies(msg.replies, msg)}
@@ -521,8 +543,18 @@ const styles = {
         fontSize: '12px',
         fontWeight: 'bold',
         backgroundColor: '#444'
-    }
+    },
+    toggleBtn: {
+        backgroundColor: '#222',
+        color: '#32CD32',
+        border: '1px solid #32CD32',
+        padding: '5px 10px',
+        borderRadius: '4px',
+        marginBottom: '10px',
+        cursor: 'pointer',
+    },
 };
+
 
 
 
