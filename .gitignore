@@ -39,6 +39,7 @@ coverage/
 
 # Ignore SQL files
 code_qna_database.sql
+code_qna_backup.sql
 
-// Ignore cookies file
+# Ignore cookies file
 cookies.txt
