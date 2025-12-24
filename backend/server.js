@@ -14,6 +14,8 @@ const cors = require('cors');
 const PORT = 3000;
 const app = express();
 
+require('dotenv').config(); // Load.env variables
+
 // Middleware
 app.use(bodyParser.json());
 app.use(cors({
@@ -33,8 +35,6 @@ app.use(session({
 }));
 
 /********************************************************************************** Database Setup **********************************************************************************/
-
-require('dotenv').config(); // Load.env variables
 
 // Create connection pool
 const pool = mysql.createPool({
