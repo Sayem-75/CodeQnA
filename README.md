@@ -20,6 +20,22 @@ The project demonstrates backend API design, relational database modeling, authe
 
 ---
 
+## 📸 Screenshots
+
+### User Authentication
+![Register Page](screenshots/register.png)
+
+### Channel Page
+![Channel Page](screenshots/channel.png)
+
+### Threaded Discussions
+![Thread View](screenshots/thread.png)
+
+### Admin View
+![Admin Controls](screenshots/admin.png)
+
+---
+
 ## 🛠️ Tech Stack
 
 **Frontend**
@@ -119,6 +135,5 @@ For simplicity and reproducibility, this project is primarily intended to be run
 ## 📄 License
 
 This project is provided for learning and portfolio purposes.
-
 
 
