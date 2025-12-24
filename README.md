@@ -1,4 +1,4 @@
-# CMPT 353 Project - CodeQnA
+# CodeQnA - Full Stack Q&A Web Application
 
 
 
