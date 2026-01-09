@@ -40,18 +40,15 @@ The project demonstrates backend API design, relational database modeling, authe
 
 **Frontend**
 - React (Create React App)
-- JavaScript
-- HTML
 - CSS
 
 **Backend**
-- Node.js
 - Express
 - MySQL
 
 **DevOps / Tooling**
-- Docker & Docker Compose
-- Git & GitHub
+- Docker
+- GitHub
 
 ---
 
@@ -61,7 +58,6 @@ The easiest way to run this project locally is using Docker.
 
 ### Prerequisites
 - Docker
-- Docker Compose
 
 ### Setup
 1. Clone the repository:
